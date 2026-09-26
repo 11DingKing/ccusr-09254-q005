@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 from datetime import datetime
 from typing import Any, Literal
 
@@ -138,3 +140,119 @@ class DiffOut(BaseModel):
     new_event_cutoff_id: str | None
     student_changes: list[dict[str, Any]]
     students_affected: int
+
+
+def _normalize_content_hash(v: str) -> str:
+    digest = v.strip().lower()
+    if len(digest) != 64 or any(c not in "0123456789abcdef" for c in digest):
+        raise ValueError("content_hash must be a 64-character hex digest")
+    return digest
+
+
+class EvidenceRegisterIn(BaseModel):
+    content_b64: str = Field(..., min_length=4, max_length=12_000_000)
+    media_type: str = Field(
+        "application/octet-stream", min_length=1, max_length=128
+    )
+    uploader_id: str = Field(..., min_length=1, max_length=128)
+
+    @field_validator("content_b64")
+    @classmethod
+    def _check_base64(cls, v: str) -> str:
+        try:
+            base64.b64decode(v, validate=True)
+        except (binascii.Error, ValueError) as exc:
+            raise ValueError("content_b64 must be valid base64") from exc
+        return v
+
+
+class EvidenceObjectOut(BaseModel):
+    content_hash: str
+    media_type: str
+    size_bytes: int
+    uploader_id: str
+    upload_count: int
+    created: bool
+    created_at: datetime
+
+
+class EvidenceBindIn(BaseModel):
+    content_hash: str
+    bound_by: str = Field(..., min_length=1, max_length=128)
+    note: str = Field("", max_length=512)
+
+    @field_validator("content_hash")
+    @classmethod
+    def _normalize_hash(cls, v: str) -> str:
+        return _normalize_content_hash(v)
+
+
+class EvidenceBindingOut(BaseModel):
+    case_id: str
+    content_hash: str
+    bound_by: str
+    note: str
+    created: bool
+    created_at: datetime
+
+
+class EvidenceGrantIn(BaseModel):
+    subject_id: str = Field(..., min_length=1, max_length=128)
+    granted_by: str = Field(..., min_length=1, max_length=128)
+
+
+class EvidenceRevokeIn(BaseModel):
+    revoked_by: str = Field(..., min_length=1, max_length=128)
+    reason: str = Field("", max_length=512)
+
+
+class EvidenceGrantOut(BaseModel):
+    case_id: str
+    content_hash: str
+    subject_id: str
+    state: str
+    granted_by: str
+    revoked_by: str | None
+    revoke_reason: str | None
+    version: int
+    updated_at: datetime
+
+
+class EvidenceAccessEventOut(BaseModel):
+    case_id: str
+    content_hash: str
+    subject_id: str
+    action: str
+    actor_id: str
+    reason: str
+    occurred_at: datetime
+
+
+class EvidenceContentOut(BaseModel):
+    case_id: str
+    content_hash: str
+    media_type: str
+    size_bytes: int
+    content_b64: str
+
+
+class EvidenceDeletionOut(BaseModel):
+    case_id: str
+    content_hash: str
+    revoked_grants: int
+    object_preserved: bool
+    binding_preserved: bool
+
+
+class EvidenceIntegrityOut(BaseModel):
+    ok: bool
+    checked_objects: int
+    corrupted_objects: list[str]
+    dangling_bindings: list[dict[str, str]]
+    dangling_grants: list[dict[str, str]]
+
+
+class EvidenceGcOut(BaseModel):
+    removed: list[str]
+    removed_count: int
+    kept_count: int
