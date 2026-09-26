@@ -138,3 +138,96 @@ class DiffOut(BaseModel):
     new_event_cutoff_id: str | None
     student_changes: list[dict[str, Any]]
     students_affected: int
+
+
+class EvidenceRegisterIn(BaseModel):
+    evidence_ref: str = Field(..., min_length=1, max_length=128)
+    content_base64: str
+    uploader: str = Field(..., min_length=1, max_length=128)
+    filename: str | None = Field(None, max_length=256)
+    media_type: str | None = Field(None, max_length=128)
+
+
+class EvidenceLinkOut(BaseModel):
+    case_id: str
+    evidence_ref: str
+    sha256: str
+    filename: str | None
+    uploader: str
+    status: str
+    revoke_reason: str | None
+    revoked_by: str | None
+    deduplicated: bool
+    blob_reused: bool
+    changed: bool
+    created_at: str
+
+
+class EvidenceBindIn(BaseModel):
+    confirmation_event_id: str = Field(..., min_length=1, max_length=128)
+    bound_by: str = Field(..., min_length=1, max_length=128)
+    note: str = Field("", max_length=512)
+
+
+class EvidenceBindingOut(BaseModel):
+    created: bool
+    case_id: str
+    evidence_ref: str
+    confirmation_event_id: str
+    sha256: str
+    bound_by: str
+    note: str
+
+
+class EvidenceGrantIn(BaseModel):
+    grantee: str = Field(..., min_length=1, max_length=128)
+    granted_by: str = Field(..., min_length=1, max_length=128)
+    role: str = Field("viewer", max_length=32)
+
+
+class EvidenceGrantOut(BaseModel):
+    case_id: str
+    evidence_ref: str
+    grantee: str
+    role: str
+    status: str
+    granted_by: str
+    revoked_by: str | None
+    revoke_reason: str | None
+    changed: bool
+
+
+class EvidenceRevokeIn(BaseModel):
+    revoked_by: str = Field(..., min_length=1, max_length=128)
+    reason: str = Field(..., min_length=1, max_length=512)
+
+
+class EvidenceAccessIn(BaseModel):
+    actor: str = Field(..., min_length=1, max_length=128)
+
+
+class EvidenceAccessOut(EvidenceLinkOut):
+    role: str
+    media_type: str | None
+    content_base64: str
+
+
+class IntegrityProblem(BaseModel):
+    kind: str
+
+    model_config = {"extra": "allow"}
+
+
+class IntegrityReport(BaseModel):
+    ok: bool
+    objects_checked: int
+    links_checked: int
+    bindings_checked: int
+    audit_entries_checked: int
+    problems: list[dict[str, Any]]
+    checked_at: str
+
+
+class CleanupResult(BaseModel):
+    removed: int
+    sha256: list[str]

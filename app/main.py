@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
+from .evidence.router import _admin_router as evidence_admin_router
+from .evidence.router import router as evidence_router
 from .routers import router
 
 app = FastAPI(
@@ -17,6 +19,8 @@ app = FastAPI(
 )
 
 app.include_router(router)
+app.include_router(evidence_router)
+app.include_router(evidence_admin_router)
 
 
 @app.get("/health", tags=["meta"])
